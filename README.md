@@ -4,7 +4,7 @@ Incremental Reverse Proxy Learning and Documentation:
 
 ##Overview
 
-This is my first project. The concept is simple, set up a reverse proxy and use Apache JMeter to test preformace, latency, and throughput underload.
+This is my first project. The concept is simple, set up a reverse proxy and use Apache Apache Benchmark and wrk to test performace. 
 
 ##Goals
 - Measure response times thought a reverse proxy
@@ -13,7 +13,7 @@ This is my first project. The concept is simple, set up a reverse proxy and use 
 
 ##Tech Stack 
 - Reverse Proxy (nginx / httpd)
-- Load Testing: Apache JMeter 
+- Load Testing: (ab) latency, and (wrk) transfer rate, and latency distro
 - OS : Arch linux 
 
 ##Setup 

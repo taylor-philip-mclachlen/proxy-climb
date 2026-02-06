@@ -13,7 +13,7 @@ This is my first project. The concept is simple, set up a reverse proxy and use 
 
 ##Tech Stack 
 - Reverse Proxy (nginx / httpd)
-- Load Testing: (ab) latency, and (wrk) transfer rate, and latency distro
+- Load Testing: (ab) latency, and (wrk) transfer rate, and latency distribution 
 - OS : Arch linux 
 
 ##Setup 

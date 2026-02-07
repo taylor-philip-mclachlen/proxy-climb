@@ -4,7 +4,7 @@ Incremental Reverse Proxy Learning and Documentation:
 
 ##Overview
 
-This is my first project. The concept is simple, set up a reverse proxy and use Apache Apache Benchmark and wrk to test performace. 
+This is my first project. The concept is simple, set up a reverse proxy and use wrk to test performace. 
 
 ##Goals
 - Measure response times thought a reverse proxy
@@ -13,7 +13,7 @@ This is my first project. The concept is simple, set up a reverse proxy and use 
 
 ##Tech Stack 
 - Reverse Proxy (nginx / httpd)
-- Load Testing: (ab) latency, and (wrk) transfer rate, and latency distribution 
+- Load Testing: (wrk) latency, transfer rate, and latency distribution 
 - OS : Arch linux 
 
 ##Setup 

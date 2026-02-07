@@ -9,7 +9,7 @@ This is my first project. The concept is simple, set up a reverse proxy and use 
 ##Goals
 - Measure response times thought a reverse proxy
 - Identify bottlenecks under conciurrent load
-- Document setup ad reproducible tests
+- Document setup and reproducible tests
 
 ##Tech Stack 
 - Reverse Proxy (nginx / httpd)

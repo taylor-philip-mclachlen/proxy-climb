@@ -20,7 +20,10 @@ This is my first project. The concept is simple, set up a reverse proxy and use 
 - Cores: 4 Physical, 8 Logical
 
 ## System Tuning & OS-Level Concepts
-
+-NGINX 1.29.5
+-APACHE 2.4.66
+-wrk 4.2.0
+-go 1.25.7 
 ## Setup 
 
 ## Running Tests 

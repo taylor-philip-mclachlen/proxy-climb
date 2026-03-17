@@ -90,7 +90,9 @@ sudo sysctl -p
 2. **Your proxy accepts** → uses a file descriptor (limited by `ulimit`)
 3. **Proxy connects to backend** → uses another file descriptor
 4. **Connection closes** → file descriptor returned to pool
+5. **The TIME_WAIT Trap: Even after a connection closes, the OS holds the port for ~60 seconds. To fix this during heavy benchmarking, enable tcp_tw_reuse:
 
+sudo sysctl -w net.ipv4.tcp_tw_reuse=1
 If any layer is too restrictive, you become the bottleneck.
 
 

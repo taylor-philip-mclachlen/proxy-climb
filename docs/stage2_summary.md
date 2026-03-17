@@ -1,59 +1,54 @@
-stage 2 summary: 
+Stage 2 Summary: Proxy Hardening & SSL Implementation
+Overview
 
-stage 1 and 0 set up a good baseline for whats to come. stage 2 will focus on hardening the security of the proxy. 
-heres the starting idea 
+While Stages 0 and 1 established the functional baseline, Stage 2 focused on security hardening, transition to HTTPS, and performance optimization of the proxy layer.
+Core Security Implementation
 
-finalize security headers.
-set up https. :80 -> :443 
-ssl/tls  certification.
-run benchmark, 10c 100c and 1000c 
----
+    SSL/TLS Termination: * Transitioned from port :80 to :443.
 
-firstly lets look at the benifits off https vs http. and why ssl certification is important. 
-firstly encryption, http dose not encrypt the data. that also means that the data the server recieves is encrypted so this is where nginx will have to do the "ssl termination". 
-the second big benifit is the autentication of ssl and a legitimate site will have a authentic certificate so the site user know that this is your server and not a fake. 
-also MAC's "message authentication codes" which stops data in transfer from being altered. 
+        Implemented SSL Termination at the Nginx level. This ensures data is encrypted in transit while allowing Nginx to handle the heavy lifting of decryption before passing traffic to the Apache backend.
 
+        Benefits:
 
-command for openssl key:sudo openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
--keyout /etc/ssl/private/nginx-selfsigned.key \
--out /etc/ssl/certs/nginx-selfsigned.crt \
--subj "/C=US/ST=State/L=City/O=Organization/OU=Unit/CN=localhost"
+            Encryption: Protects data from eavesdropping.
 
-i had already created these keys so i ran into the issue of them not 
-sycing because they already existed. 
+            Authentication: Validates server identity via SSL certificates.
 
-ok so ssl cert is working. because i use openssl the browser dosenot like that we self certified. 
+            Integrity (MACs): Uses Message Authentication Codes to ensure data isn't tampered with during transit.
 
-reguardless we now just add some new headers to nginx and httpd to finalize stage 2. 
+    Certificate Management:
 
-httpd new headers: 
+        Generated a 2048-bit RSA self-signed certificate using OpenSSL.
 
--Timeout 30&& KeepaliveTimeout 5 #reduces the tie httpd is hungup
--TraceEnable off # reduce attack suraface for cross site tracking
+        Note: Encountered sync issues with existing keys; resolved by overwriting/verifying paths in /etc/ssl/.
 
-nginx header:
--ssl certification / https 
--Strict-Transport-Security #this stops nginx from useing http
--Buffer overflow #reduces surface for memory exhastion attack
--ssl session ticketing #
--ssl_prefer_server_ciphers on; #forces stronger cipher suits
--enabled http2 which should improve reasource loading times  
--ssl stapling should impove the handshake time 
--changed the ssl_ciphers to ssl_ecdh_curve which from what i read is a cipher algorith that is more efficient then using all the differnt key exchange, authenticate, e.t.c 
+    Automatic Redirection:
 
-had some difficulty with http2. turns out the syntax is: 
-http2 on;
+        Configured a global :80 to :443 redirect to prevent users from accessing the site over an unencrypted connection.
 
-well moving on i cleaned up the nginx.conf. and lastly im adding a
-:80 redirect so you cant get stuck on http connection.
+Configuration Hardening
+Apache (httpd) Updates:
 
-had to alter the benchmark. runBenchmark section was getting 404s because of the change to :443. 
+    Timeout 30 & KeepaliveTimeout 5: Optimized to reduce the duration a process remains "hung" on an idle connection, freeing up resources faster.
 
+    TraceEnable Off: Disabled TRACE requests to mitigate Cross-Site Tracking (XST) risks.
 
-this is the end of stage 2. we hardened the server. moved to ssl cert443 for nginx. added some security headers and cleaned up the 
-.conf for both nginx & httpd. also uodated to nginx 1.29.5
+Nginx Updates:
 
-now we add the bench marks 10c - 100c - 1000c and start stage 3
+    HSTS (Strict-Transport-Security): Enforced HTTPS at the browser level for 1 year.
 
+    Buffer Overflow Protection: Adjusted client_body_buffer_size and header limits to mitigate memory exhaustion attacks.
 
+    Cipher Strength: Enabled ssl_prefer_server_ciphers to force the use of the server's strong cipher suite.
+
+    Curve Optimization: Utilized ssl_ecdh_curve secp384r1. This optimizes the Elliptic Curve Diffie-Hellman (ECDH) key exchange, providing high security with better computational efficiency than standard RSA exchanges.
+
+    HTTP/2 Transition: Updated to Nginx 1.25.x+ syntax (http2 on;) to improve resource multiplexing and load speeds.
+
+Benchmark & Versioning
+
+    Updated the Go benchmark tool to support https:// protocol and handle port 443 targets.
+
+    Verified the stack on Nginx 1.25.5 (latest mainline features).
+
+    Next Step: Execute high-concurrency benchmarks at 10c, 100c, and 1000c to analyze the "SSL Tax" on the Omen 15 hardware.

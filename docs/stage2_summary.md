@@ -52,3 +52,13 @@ Benchmark & Versioning
     Verified the stack on Nginx 1.25.5 (latest mainline features).
 
     Next Step: Execute high-concurrency benchmarks at 10c, 100c, and 1000c to analyze the "SSL Tax" on the Omen 15 hardware.
+
+
+
+Key Takeaways
+
+    The Proxy Shield: Under 1000c load, Nginx proved its worth by maintaining stability (near-zero errors), whereas raw Apache began dropping connections even after tuning.
+
+    Latency Win: Tuning the OS backlogs reduced the maximum latency during peak load from 1.33s down to 825ms.
+
+    Hardware Ceiling: The 4-core i7-7700HQ reached ~100% utilization during the 1000c run, indicating that further gains require the Stage 3 load-balancing strategy.

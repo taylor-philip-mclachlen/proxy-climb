@@ -35,7 +35,7 @@ func main() {
 }
 
 func runBenchmark(url string) {
-	cmd := exec.Command("wrk", "-t2", "-c100", "-d10s", url)
+	cmd := exec.Command("wrk", "-t2", "-c1000", "-d10s", url)
 	output, _ := cmd.CombinedOutput()
 
 	fmt.Println("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")
@@ -58,7 +58,7 @@ func runCooldown(totalSeconds int) {
 
 	fmt.Println("--------------------------------")
 	fmt.Printf("Benchmark complete on Omen 15.\n")
-	fmt.Printf("Nginx Workers: 4 | Connections: 100\n")
+	fmt.Printf("Nginx Workers: 4 | Connections: 1000\n")
 	fmt.Println("--------------------------------")
 
 }

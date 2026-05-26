@@ -42,7 +42,7 @@ Generated a local 2048-bit RSA certificate via OpenSSL. NGINX handles TLS termin
 
 Additional hardening: HSTS enforced for 1 year, `ssl_ecdh_curve secp384r1` for efficient key exchange, `ssl_prefer_server_ciphers on`, buffer overflow mitigations on client body and header sizes, `TraceEnable Off` on Apache to close the XST vector.
 
-The most measurable win: tuning OS connection backlogs (`somaxconn`, `tcp_max_syn_backlog`) cut worst-case latency under peak load from 1.33 seconds down to 825ms. That single OS-level change outperformed any application-layer config change in this stage.
+The most measurable win: tuning OS connection backlogs (`somaxconn`, `tcp_max_syn_backlog`) cut worst-case latency under peak load from 1.10s down to 825ms. That single OS-level change outperformed any application-layer config change in this stage — and Stage 2 NGINX ends up as the best-performing configuration at 1000c by a significant margin.
 
 ### Stage 3.0: Firewall, Conntrack, and the Stability Paradox
 
@@ -52,7 +52,7 @@ The expected result was a performance penalty. The actual result was improved st
 
 The mechanism: `conntrack` usage stayed low (~125 active entries, nowhere near the 262,144 limit), so the firewall overhead was processing-based rather than capacity-based — small and predictable. Meanwhile, the rate limits and connection caps were acting as an unintentional traffic shaper. By throttling connection surges before they reached NGINX, the firewall prevented the kernel socket queue saturation that was causing instability in earlier stages. The firewall wasn't helping application performance — it was preventing the OS from being overwhelmed before the application even saw the traffic.
 
-At 1000c, the firewall becomes essentially irrelevant as a bottleneck. Kernel socket pressure and NGINX worker contention dominate completely. The firewall's ~10–13% overhead at 100c disappears as a concern when latency is spiking 16× and read errors hit six figures.
+At 1000c, the firewall becomes essentially irrelevant as a bottleneck. Kernel socket pressure and NGINX worker contention dominate completely. The firewall's ~10–13% overhead at 100c disappears as a concern when latency is spiking and read errors hit six figures.
 
 Tested loopback bypass (`NOTRACK` on the raw table) to remove loopback traffic from conntrack overhead entirely. Worth noting for future tuning.
 
@@ -68,36 +68,57 @@ The reason it didn't ship in this stage: introducing a half-built abstraction la
 
 ## Raw Data
 
-### Light Concurrency — 100 Connections
+### 100 Connections — Baseline Load
 
-At 100 simultaneous connections, the architecture differences are subtle. Apache is fast; NGINX adds overhead but stays clean on errors. The SSL-tuned NGINX configuration in Stage 2 achieved the highest transfer throughput of any configuration tested — SSL termination at the edge, combined with HTTP/2 multiplexing, more than offset the encryption cost.
+At 100 simultaneous connections, Apache behaves like a steady sink — throughput barely moves across all stages (~50–59k RPS), latency is almost flat. NGINX is where the configuration changes show up. Stage 1 is the worst performer (security headers + worker tuning mid-flight); Stage 2 is the best, where SSL termination and HTTP/2 multiplexing more than offset the encryption cost.
 
-| Server Configuration | Req/sec | Avg Latency | Transfer/sec | Errors |
+**NGINX :443 / :80**
+
+| Stage | Req/sec | Avg Latency | Max Latency | Transfer/sec |
 | :--- | :---: | :---: | :---: | :---: |
-| Nginx — Stage 0 Baseline | 22,768 | 4.58 ms | 5.19 MB/s | 0 |
-| Nginx — Stage 1 Hardened | 15,232 | 16.34 ms | 6.09 MB/s | 0 |
-| Nginx — Stage 2 SSL Tuned | 34,188 | 3.32 ms | 16.04 MB/s | 0 |
-| Nginx — Stage 3.5 with Firewall | 30,267 | 3.90 ms | 14.20 MB/s | 0 |
-| | | | | |
-| Apache — Stage 0 Baseline | 58,475 | 3.24 ms | 12.45 MB/s | 22 |
-| Apache — Stage 1 Hardened | 59,550 | 2.89 ms | 11.87 MB/s | 0 |
-| Apache — Stage 2 High-Limit | 58,774 | 2.98 ms | 11.71 MB/s | 0 |
-| Apache — Stage 3.5 Event-Driven | 52,369 | 2.99 ms | 10.44 MB/s | 0 |
+| Stage 0 — Baseline | 22,768 | 4.58 ms | 77.37 ms | 5.19 MB/s |
+| Stage 1 — Hardened | 15,232 | 16.34 ms | 145.88 ms | 6.09 MB/s |
+| Stage 2 — SSL Tuned | 34,188 | 3.32 ms | 163.57 ms | 16.04 MB/s |
+| Stage 3.0 — Firewall | 30,523 | 3.75 ms | 93.14 ms | 14.32 MB/s |
+| Stage 3.5 — Event MPM | 30,267 | 3.90 ms | 121.96 ms | 14.20 MB/s |
+
+**Apache :8080**
+
+| Stage | Req/sec | Avg Latency | Max Latency | Transfer/sec | Errors |
+| :--- | :---: | :---: | :---: | :---: | :---: |
+| Stage 0 — Baseline | 58,475 | 3.24 ms | 39.43 ms | 12.45 MB/s | 22 |
+| Stage 1 — Hardened | 59,550 | 2.89 ms | 28.44 ms | 11.87 MB/s | 0 |
+| Stage 2 — High-Limit | 58,774 | 2.98 ms | 31.79 ms | 11.71 MB/s | 0 |
+| Stage 3.0 — Firewall | 50,879 | 3.08 ms | 30.49 ms | 10.14 MB/s | 0 |
+| Stage 3.5 — Event MPM | 52,369 | 2.99 ms | 30.17 ms | 10.44 MB/s | 0 |
 
 ![100c Performance Dashboard](graphs/benchmark_100c_dashboard.png)
 
-### Stress Test — 1000 Connections
+### 1000 Connections — Stress Test
 
-At 10× load, the architectural difference stops being subtle.
+At 10× load, the architectural difference stops being subtle. Apache's raw speed advantage collapses under error volume. NGINX holds throughput but latency climbs hard.
 
-NGINX :443 throughput drops ~17% from the 100c baseline. Latency spikes roughly 16× (3.9ms → 64ms average, 1.34s max). Errors stay near zero. Apache :8080 throughput drops ~25%, latency spikes ~5×, and read errors explode to **155,446** in a single run. On raw requests-per-second, Apache still looks competitive. The error column tells the real story.
+Stage 2 is the standout: backlog tuning brought max latency down to 825ms and NGINX hit its highest 1000c RPS of any stage. Adding the firewall in Stage 3.0 actually hurt NGINX throughput slightly while Apache's error count got worse — the connection caps were dropping legitimate traffic at this volume.
+
+**NGINX :443**
+
+| Stage | Req/sec | Avg Latency | Max Latency | Std Dev | Errors |
+| :--- | :---: | :---: | :---: | :---: | :---: |
+| Stage 1 — Hardened | 14,818 | 103 ms | 1.10 s | 121 ms | 251 |
+| Stage 2 — SSL Tuned | 28,291 | 40 ms | 825 ms | 66 ms | 322 |
+| Stage 3.0 — Firewall | 24,996 | 64 ms | 1.34 s | 143 ms | 501 |
+| Stage 3.5 — Event MPM | 24,996 | 64 ms | 1.34 s | 143 ms | 501 |
+
+**Apache :8080**
+
+| Stage | Req/sec | Avg Latency | Max Latency | Std Dev | Errors |
+| :--- | :---: | :---: | :---: | :---: | :---: |
+| Stage 1 — Hardened | 51,498 | 39 ms | 1.71 s | 73 ms | ~89,000 |
+| Stage 2 — High-Limit | 52,696 | 36 ms | 226 ms | 48 ms | ~65,000 |
+| Stage 3.0 — Firewall | 39,199 | 15 ms | 230 ms | 17 ms | 155,446 |
+| Stage 3.5 — Event MPM | 39,199 | 15 ms | 230 ms | 17 ms | 155,446 |
 
 The failure mode is kernel socket queue saturation — connections arriving faster than the accept queue can process them, with `ulimit` and `somaxconn` defaults acting as hard ceilings. This is an OS-level constraint, not an application one.
-
-| Configuration | RPS (100c) | RPS (1000c) | Latency (100c) | Latency (1000c) | Errors (1000c) |
-| :--- | :---: | :---: | :---: | :---: | :---: |
-| NGINX :443 — Stage 3 | 30,523 | 24,997 | 3.75 ms | 64.67 ms | 501 |
-| Apache :8080 — Stage 3 | 50,879 | 39,199 | 3.08 ms | 15.56 ms | 155,446 |
 
 ![Throughput Degradation under Load](graphs/concurrency_load_comparison.png)
 
@@ -128,3 +149,5 @@ The failure mode is kernel socket queue saturation — connections arriving fast
 **Embedded/C transition.** The resource-constraint thinking from this project — CPU contention, kernel socket limits, memory boundaries, scheduler behavior — maps directly to embedded systems work. The lower-level projects in this portfolio build from here.
 
 ---
+
+Full stage-by-stage notes, raw benchmark output, and OS configuration details live in [`docs/`](docs/).

@@ -50,7 +50,7 @@ At 100 simultaneous connections, Apache is naturally fast out of the box. But on
 | Apache (Stage 2 High-Limit) | 58,774 | 2.98 ms | 11.71 MB/s | 0 |
 | Apache (Stage 3.5 Event-Driven) | 52,369 | 2.99 ms | 10.44 MB/s | 0 |
 
-![100c Performance Dashboard](reverse_proxy/graphs/benchmark_100c_dashboard.png)
+![100c Performance Dashboard](graphs/benchmark_100c_dashboard.png)
 
 ### 2. The 1000c Breakpoint
 When the pressure is scaled up 10x to 1,000 concurrent connections, the real architectural differences reveal themselves:

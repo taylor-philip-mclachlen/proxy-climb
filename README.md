@@ -57,8 +57,8 @@ When the pressure is scaled up 10x to 1,000 concurrent connections, the real arc
 * **NGINX:** Holds its ground smoothly. Throughput only drops by about 15% compared to low load, and errors are essentially non-existent.
 * **Apache:** Looks incredibly fast on paper, but it completely runs out of available network sockets, resulting in an astronomical failure rate of **89,000 to 155,000 read errors**. 
 
-![Throughput Degradation under Load](reverse_proxy/graphs/concurrency_load_comparison.png)
-![1000c Detailed Error Dashboard](reverse_proxy/graphs/benchmark_dashboard.png)
+![Throughput Degradation under Load](graphs/concurrency_load_comparison.png)
+![1000c Detailed Error Dashboard](graphs/benchmark_dashboard.png)
 
 ---
 
